@@ -43,7 +43,7 @@ def getMp3(pageNumber):
              mp3Loc=re.findall("<iframe src=.*&file=(.*)&duration",fileLoc)
              fileDown=urllib2.urlopen(mp3Loc[0])
              print "Download Link: ",mp3Loc[0], "Episode Name: ", elem[1]
-             localFileDown = open(elem[0].split("/")[len(elem[0].split("/"))-1].replace(".mp3","").title()+".mp3","wb")
+             localFileDown = open(mp3Loc[0].split("/")[len(mp3Loc[0].split("/"))-1].title(),"wb")
              try:
                  total_size = fileDown.info().getheader('Content-Length').strip()
                  header = True
