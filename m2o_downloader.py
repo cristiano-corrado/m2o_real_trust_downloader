@@ -9,17 +9,17 @@ import sqlite3
 from cookielib import CookieJar
 from hashlib import sha256
 
-conn = sqlite3.connect('m2o.sqlite3',check_same_thread=False)
+URL="https://www.m2o.it/programmi/real-trust/puntate/"
+DBName="m2o"
+# Sqlite connector
+conn = sqlite3.connect(DBName+'.sqlite3',check_same_thread=False)
 c=conn.cursor()
 
-
-URL="https://www.m2o.it/programmi/real-trust/puntate/"
-
+# urllib2 configuration
 ctx = ssl.create_default_context()
 ctx.check_hostname = False
 ctx.verify_mode = ssl.CERT_NONE
 cj=CookieJar()
-
 
 opener=urllib2.build_opener(
         urllib2.HTTPSHandler(context=ctx),
@@ -27,8 +27,16 @@ opener=urllib2.build_opener(
     )
 
 opener.addheaders = [('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101 Firefox/45.0')]
-
 urllib2.install_opener(opener)
+
+def checkdb(DB):
+    ex=c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=\'"+DB+"\'");
+    if ex.fetchone() == None :
+        c.execute("CREATE TABLE m2o(songnum,filename,page,filesize,hash)")
+        print "Creating DB structure, table name: "+DB
+    else:
+        print "DB exists and in path. Downloading songs..."
+    return True
 
 def numPages(URL):
     getDetails=urllib2.urlopen(URL).read()
@@ -36,7 +44,6 @@ def numPages(URL):
     return max(pageNumber)
 
 def storePlaylist(number,elem,page,size,Hash):
-
      c.execute("INSERT INTO m2o VALUES("+"'"+str(number)+"'"+",'"+elem+"','"+str(page)+"','"+str(size)+"','"+str(Hash)+"')")
      conn.commit()
 
@@ -52,11 +59,9 @@ def currentSHA2sum(files):
         return Hash
 
 def downloader(Links,page):
-
     counter = 0
     for elem in Links:
          counter=counter+1
-
          try:
              fileLoc=urllib2.urlopen(elem[0]).read()
              mp3Loc=re.findall("<iframe src=.*&file=(.*)&duration",fileLoc)
@@ -100,9 +105,8 @@ def downloader(Links,page):
                  storePlaylist(counter,localFileDown,page,os.path.getsize(localFileDown),currentSHA2sum(localFileDown))
              else:
                  print "** File: "+localFileDown," already in DB"
-        except Exception, e:
-            print "Not handled error: ",e 
-
+         except Exception, e:
+            print "Not handled error: ",e
 
 def getMp3(pageNumber):
 
@@ -126,6 +130,6 @@ def getMp3(pageNumber):
 
             downloader(getLinks,i)
 
-
 if __name__ == '__main__':
-    getMp3(numPages(URL))
+    if checkdb(DBName):
+        getMp3(numPages(URL))
