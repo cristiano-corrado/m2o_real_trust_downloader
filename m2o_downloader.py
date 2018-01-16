@@ -41,32 +41,6 @@ def checkdb(DB):
         print "DB exists and in path. Downloading songs..."
     return True
 
-'''def gatherFilename(urlname,titlename):
-
-
-    URLNAME=urlname[0].split("/")[-1].split("_")
-
-    if not ("real" or "realmovie" or "realbook" or "realtrust" or "trust") in URLNAME:
-
-        numBlack=re.compile("^[0-9]")
-        monBlack=re.compile(r"^gen$|^feb$|^mar$|^apr$|^mag$|^giu$|^lug$|^ago$|^set$|^ott$|^nov$|^dic$")
-        NewName=filter(lambda number: not ( monBlack.search(number) or numBlack.search(number) ),URLNAME)
-
-        if not "mp3" in "_".join(NewName):
-            return "_".join(NewName)+".mp3"
-        else:
-            return "_".join(NewName)
-
-    elif "selecta" in titlename.lower():
-        return titlename.lower().rstrip().replace(" ","_")+".mp3"
-
-    else:
-        numBlack=re.compile("^[0-9]{1,4}")
-        monBlack=re.compile(r"gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|real|movie|trust|book|realmovie|realbook|realtrust")
-        removeDash=re.compile("-")
-        TitleName=filter(lambda number: not ( monBlack.search(number) or numBlack.search(number) or removeDash.search(number)),titlename.lower().split())
-        return "_".join(TitleName)+".mp3"'''
-
 def gatherFilename(urlname,titlename):
 
     URLNAME=urlname[0].split("/")[-1]
