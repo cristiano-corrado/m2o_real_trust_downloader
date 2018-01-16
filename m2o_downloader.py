@@ -6,11 +6,14 @@ import re
 import ssl
 import urllib2
 import sqlite3
+import datetime
+import eyed3
 from cookielib import CookieJar
 from hashlib import sha256
-
+#from tabulate import tabulate
 URL="https://www.m2o.it/programmi/real-trust/puntate/"
 DBName="m2o"
+
 # Sqlite connector
 conn = sqlite3.connect(DBName+'.sqlite3',check_same_thread=False)
 c=conn.cursor()
@@ -32,19 +35,73 @@ urllib2.install_opener(opener)
 def checkdb(DB):
     ex=c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=\'"+DB+"\'");
     if ex.fetchone() == None :
-        c.execute("CREATE TABLE m2o(songnum,filename,page,filesize,hash)")
+        c.execute("CREATE TABLE m2o(datedown,songnum,filename,page,filesize,url,hash)")
         print "Creating DB structure, table name: "+DB
     else:
         print "DB exists and in path. Downloading songs..."
     return True
+
+'''def gatherFilename(urlname,titlename):
+
+
+    URLNAME=urlname[0].split("/")[-1].split("_")
+
+    if not ("real" or "realmovie" or "realbook" or "realtrust" or "trust") in URLNAME:
+
+        numBlack=re.compile("^[0-9]")
+        monBlack=re.compile(r"^gen$|^feb$|^mar$|^apr$|^mag$|^giu$|^lug$|^ago$|^set$|^ott$|^nov$|^dic$")
+        NewName=filter(lambda number: not ( monBlack.search(number) or numBlack.search(number) ),URLNAME)
+
+        if not "mp3" in "_".join(NewName):
+            return "_".join(NewName)+".mp3"
+        else:
+            return "_".join(NewName)
+
+    elif "selecta" in titlename.lower():
+        return titlename.lower().rstrip().replace(" ","_")+".mp3"
+
+    else:
+        numBlack=re.compile("^[0-9]{1,4}")
+        monBlack=re.compile(r"gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|real|movie|trust|book|realmovie|realbook|realtrust")
+        removeDash=re.compile("-")
+        TitleName=filter(lambda number: not ( monBlack.search(number) or numBlack.search(number) or removeDash.search(number)),titlename.lower().split())
+        return "_".join(TitleName)+".mp3"'''
+
+def gatherFilename(urlname,titlename):
+
+    URLNAME=urlname[0].split("/")[-1]
+
+    if not re.findall(r"real|realmovie|realbook|realtrust|trust",URLNAME):
+        numBlack=re.compile("^[0-9]")
+        URLNAME=URLNAME.split("_")
+        monBlack=re.compile(r"^gen$|^feb$|^mar$|^apr$|^mag$|^giu$|^lug$|^ago$|^set$|^ott$|^nov$|^dic$")
+        NewName=filter(lambda number: not ( monBlack.search(number) or numBlack.search(number) ),URLNAME)
+
+        if not "mp3" in "_".join(NewName):
+            return "_".join(NewName)+".mp3"
+        else:
+            return "_".join(NewName)
+
+    elif "selecta" in titlename.lower():
+        return titlename.lower().rstrip().replace(" ","_")+".mp3"
+
+    else:
+
+        numBlack=re.compile("^[0-9]{1,4}")
+        monBlack=re.compile(r"gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|real|movie|trust|book|realmovie|realbook|realtrust")
+        removeDash=re.compile("-")
+        TitleName=filter(lambda number: not ( monBlack.search(number) or numBlack.search(number) or removeDash.search(number)),titlename.lower().split())
+        return "_".join(TitleName)+".mp3"
+    sys.exit()
 
 def numPages(URL):
     getDetails=urllib2.urlopen(URL).read()
     pageNumber=re.findall("<a class='page-numbers' href='https://www.m2o.it/programmi/real-trust/puntate/page/\d+/'>(\d+)</a>",getDetails)
     return max(pageNumber)
 
-def storePlaylist(number,elem,page,size,Hash):
-     c.execute("INSERT INTO m2o VALUES("+"'"+str(number)+"'"+",'"+elem+"','"+str(page)+"','"+str(size)+"','"+str(Hash)+"')")
+def storePlaylist(number,elem,page,size,Hash,url):
+     now=format(datetime.datetime.now()).split()[0]
+     c.execute("INSERT INTO m2o VALUES("+"'"+now+"',"+"'"+str(number)+"'"+",'"+elem+"','"+str(page)+"','"+str(size)+"','"+url+"','"+str(Hash)+"')")
      conn.commit()
 
 def checkDups(filename):
@@ -58,6 +115,15 @@ def currentSHA2sum(files):
         Hash=sha256(files).hexdigest()
         return Hash
 
+def id3tag(filename,title,counter,page):
+    audiofile=eyed3.load(filename)
+    audiofile.tag.artist = u"Roberto Molinaro"
+    audiofile.tag.album = u"m2o Real Trust"
+    audiofile.tag.title = title
+    audifile.tag.track_num = int(page),int(counter)
+    audiofile.tag.save()
+    sys.exit()
+
 def downloader(Links,page):
     counter = 0
     for elem in Links:
@@ -66,20 +132,13 @@ def downloader(Links,page):
              fileLoc=urllib2.urlopen(elem[0]).read()
              mp3Loc=re.findall("<iframe src=.*&file=(.*)&duration",fileLoc)
              fileDown=urllib2.urlopen(mp3Loc[0])
+             localFileDown=gatherFilename(mp3Loc,elem[1])
+             print "%s)Name:%s Title:%s URL:%s" % (counter,localFileDown,elem[1],mp3Loc[0])
 
-             if "real" in mp3Loc[0].split("/")[-1].replace("_"," ").lower() :
-                 localFileDown = elem[1].split("-")[-1].lstrip().replace(" ","_").lower()+".mp3"
-             elif "real" in elem[1].lower() :
-                 if not mp3Loc[0].split("/")[-1].split("_")[2:] == "" :
-                    localFileDown ="_".join(mp3Loc[0].split("/")[-1].split("_")[2:]).lower()
-                 else :
-                     localFileDown = "_".join(mp3Loc[0].split("/")[-1].split("_")).lower()
-             else:
-                 print localFileDown,"empty",mp3Loc
+             if not checkDups(localFileDown) :
 
-             if not checkDups(localFileDown):
+                 # Downloading temp rem
                  saveFile=open(localFileDown,"wb")
-                 print "Downloading Link: ",mp3Loc[0], "\tEpisode Name: ", elem[1], "\tElements In Download so Far:", counter
 
                  try:
                      total_size = fileDown.info().getheader('Content-Length').strip()
@@ -102,16 +161,18 @@ def downloader(Links,page):
                      percent = round(percent*100,2)
                      sys.stdout.write("Downloaded %d of %d bytes (%0.2f%%)\r" % (progress, total_size, percent))
 
-                 storePlaylist(counter,localFileDown,page,os.path.getsize(localFileDown),currentSHA2sum(localFileDown))
+                 storePlaylist(counter,localFileDown,page,os.path.getsize(localFileDown),mp3Loc[0],currentSHA2sum(localFileDown))
+                 #id3tag(localFileDown,localFileDown.replace("_"," ").replace(".mp3","").title(),counter,page)
              else:
-                 print "** File: "+localFileDown," already in DB"
+                 print "** File: "+localFileDown, elem[1] ," already in DB",checkDups(localFileDown), mp3Loc[0]
+
          except Exception, e:
             print "Not handled error: ",e
 
 def getMp3(pageNumber):
 
     maxPages=pageNumber
-    print "Total pages:", pageNumber
+    #print "Total pages:", pageNumber
     countfiles=[]
     for i in range(int(maxPages)):
         if i >= 1:
