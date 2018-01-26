@@ -10,7 +10,7 @@ import datetime
 import eyed3
 from cookielib import CookieJar
 from hashlib import sha256
-#from tabulate import tabulate
+
 URL="https://www.m2o.it/programmi/real-trust/puntate/"
 DBName="m2o"
 
